@@ -153,6 +153,20 @@ alerts           -- eventos que ultrapassaram os thresholds configurados
 service_metrics  -- métricas agregadas por serviço e janela de 1 minuto
 ```
 
+## Demonstração
+
+### Kafka UI
+
+![Kafka UI](images/kafka-ui.png)
+
+O tópico `api-logs` recebendo mensagens em tempo real e o consumer group processando eventos.
+
+### Consultas no PostgreSQL
+
+![PostgreSQL](images/postgres-results.png)
+
+Resultados das consultas demonstrando eventos processados e alertas gerados.
+
 Todos os campos de busca frequente têm índice: `service`, `level`, `status_code` e `event_timestamp`.
 
 ### Consultas úteis
@@ -356,6 +370,20 @@ api_logs         -- processed logs (event_id UNIQUE for idempotency)
 alerts           -- events that exceeded configured thresholds
 service_metrics  -- metrics aggregated by service and 1-minute window
 ```
+
+## Demonstration
+
+### Kafka UI
+
+![Kafka UI](images/kafka-ui.png)
+
+The `api-logs` topic receiving messages in real time, while the consumer group processes events continuously.
+
+### PostgreSQL Queries
+
+![PostgreSQL](images/postgres-results.png)
+
+Query results demonstrating successfully processed events and generated alerts.
 
 All frequently queried fields are indexed: `service`, `level`, `status_code` and `event_timestamp`.
 
