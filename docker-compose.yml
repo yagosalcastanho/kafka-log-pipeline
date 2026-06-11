@@ -1,0 +1,106 @@
+
+services:
+
+  ## Zookeeper gerencia estado cluster Kafka:
+  ## eleição de líder de partição, lista de brokers ativos e configuração de tópicos
+  ## Kafka moderno (2.8+) suporta modo KRaft sem Zookeeper
+ 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000    ## intervalo base em ms para heartbeats internos
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ## Kafka broker — onde os tópicos e mensagens vivem
+  ## Um broker é uma instância do servidor Kafka
+  ## Em produção usamos pelo menos 3 brokers para redundância
+  ## 1 por ser ambiente de desenvolvimento.
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy    ## só sobe após o Zookeeper estar pronto
+    ports:
+      - "9092:9092"    ## porta exposta para o host (producer/consumer locais)
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      ## dois listeners porque o Kafka precisa ser acessível de dois contextos:
+      ## PLAINTEXT       = comunicação interna entre containers (kafka:29092)
+      ## PLAINTEXT_HOST  = comunicação externa do host Windows (localhost:9092)
+
+      ## FIX: usar 127.0.0.1 em vez de localhost no PLAINTEXT_HOST
+      ## no Windows o confluent-kafka (librdkafka) resolve localhost para IPv6 (::1)
+      ## o que causa falha de conexão — 127.0.0.1 força IPv4 explicitamente
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://127.0.0.1:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      ## fator de replicação 1 = sem replicação
+      ## em produção use 3 para redundância
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      ## cria tópicos automaticamente na primeira publicação
+      ## em produção crie tópicos explicitamente com número de partições definido
+
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+      ## retenção de mensagens: 168h = 7 dias (padrão)
+
+      KAFKA_LOG_RETENTION_HOURS: 168
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  ## Interface web para inspecionar tópicos, partições, offsets e consumer groups.
+  ## Essencial para debug e para mostrar em portfólio que o pipeline está funcionando.
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka_ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+
+  ## PostgreSQL para persistência dos logs processados pelo consumer.
+  ## Porta 5435 no host para não conflitar com instalações locais na 5432.
+
+  postgres:
+    image: postgres:15
+    container_name: postgres_kafka
+    environment:
+      POSTGRES_USER: kafka_user
+      POSTGRES_PASSWORD: kafka_pass
+      POSTGRES_DB: logs_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/create_tables.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kafka_user -d logs_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
