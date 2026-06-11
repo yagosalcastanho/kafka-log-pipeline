@@ -417,8 +417,7 @@ ORDER BY error_pct DESC;
 
 ### Contributing | Contribuindo
 
-Contributions are welcome. Fork the project, create a branch, commit your changes and open a pull request.
-Contribuições são bem-vindas. Faça um fork, crie uma branch, commite suas alterações e abra um pull request.
+Contributions are more than welcome. Fork the project, create a branch, commit your changes and open a pull request. Maybe you know something that I don´t know :). Contribuições são mais que bem-vindas. Faça um fork, crie uma branch, commite suas alterações e abra um pull request; talvez você saiba de algo que eu não sei.
 
 ### License | Licença
 
